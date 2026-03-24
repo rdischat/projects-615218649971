@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { animate, stagger } from 'motion';
 import { db, auth } from './firebase';
 import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
-import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { signInWithPopup, GoogleAuthProvider, GithubAuthProvider, signOut, onAuthStateChanged, User } from 'firebase/auth';
 
 interface Message {
   id: string;
@@ -51,11 +51,13 @@ export class App {
 
   selectedColor = signal<ThemeColor>(this.colors[0]);
   isColorPickerOpen = signal<boolean>(false);
-  activeTab = signal<'home' | 'messages' | 'profile' | 'communities' | 'settings'>('home');
+  activeTab = signal<'home' | 'messages' | 'profile' | 'communities' | 'settings' | 'auth'>('home');
   isMenuOpen = signal<boolean>(false);
 
   currentUser = signal<User | null>(null);
   isAuthReady = signal<boolean>(false);
+  isLoggingIn = signal<boolean>(false);
+  authError = signal<string | null>(null);
   messages = signal<Message[]>([]);
   newMessageText = signal<string>('');
 
@@ -126,17 +128,50 @@ export class App {
     localStorage.setItem('theme-color', color.name);
   }
 
-  selectTab(tab: 'home' | 'messages' | 'profile' | 'communities' | 'settings') {
+  selectTab(tab: 'home' | 'messages' | 'profile' | 'communities' | 'settings' | 'auth') {
     this.activeTab.set(tab);
     this.isMenuOpen.set(false);
   }
 
   async login() {
+    if (this.isLoggingIn()) return;
+    this.authError.set(null);
+    this.isLoggingIn.set(true);
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error);
+      this.handleAuthError(error);
+    } finally {
+      this.isLoggingIn.set(false);
+    }
+  }
+
+  async loginWithGithub() {
+    if (this.isLoggingIn()) return;
+    this.authError.set(null);
+    this.isLoggingIn.set(true);
+    try {
+      const provider = new GithubAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (error: any) {
+      console.error("Github Login error:", error);
+      this.handleAuthError(error);
+    } finally {
+      this.isLoggingIn.set(false);
+    }
+  }
+
+  private handleAuthError(error: any) {
+    if (error.code === 'auth/operation-not-allowed') {
+      this.authError.set('Этот способ входа отключен. Пожалуйста, включите его в Firebase Console (Authentication -> Sign-in method).');
+    } else if (error.code === 'auth/popup-closed-by-user') {
+      this.authError.set('Окно авторизации было закрыто до завершения входа.');
+    } else if (error.code === 'auth/cancelled-popup-request') {
+      this.authError.set('Предыдущий запрос на авторизацию был отменен. Пожалуйста, подождите и попробуйте снова.');
+    } else {
+      this.authError.set(error.message || 'Произошла ошибка при авторизации.');
     }
   }
 

@@ -36,10 +36,10 @@
       Войдите, чтобы писать сообщения
     </div>
     <button 
-      (click)="login()"
+      (click)="selectTab('auth')"
       [class]="'px-4 py-2 md:px-8 md:py-3 rounded-full text-xs md:text-sm font-bold tracking-wide uppercase shadow-lg transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#050505] bg-white/5 backdrop-blur-md border hover:bg-white/10 ' + selectedColor().textClass + ' ' + selectedColor().borderClass + ' ' + selectedColor().ringClass"
     >
-      <span class="hidden sm:inline">Войти через Google</span>
+      <span class="hidden sm:inline">Войти / Регистрация</span>
       <span class="sm:hidden">Войти</span>
     </button>
   }
@@ -145,6 +145,86 @@
         </div>
       </div>
 
+      <!-- AUTH TAB -->
+      <div 
+        [style.display]="activeTab() === 'auth' ? 'flex' : 'none'"
+        class="relative z-10 flex-col items-center justify-center w-full max-w-3xl flex-1 animate-in fade-in slide-in-from-bottom-8 duration-700"
+      >
+        <div class="w-full flex flex-col gap-6 items-center text-center mt-16 md:mt-0">
+          <div class="bg-white/5 backdrop-blur-md border border-white/10 p-8 md:p-12 rounded-3xl text-zinc-300 w-full max-w-lg shadow-lg flex flex-col items-center gap-6">
+            <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center mb-2">
+              <mat-icon class="text-5xl opacity-80" [class]="selectedColor().textClass">lock_person</mat-icon>
+            </div>
+            
+            <h3 class="text-2xl font-bold text-white">Добро пожаловать</h3>
+            <p class="text-zinc-400 text-sm md:text-base">
+              Войдите или зарегистрируйтесь, чтобы получить доступ к глобальному чату, настроить свой профиль и общаться в сообществах.
+            </p>
+            
+            @if (!currentUser()) {
+              @if (authError()) {
+                <div class="w-full p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-left flex items-start gap-3">
+                  <mat-icon class="text-red-400 shrink-0">error_outline</mat-icon>
+                  <span>{{ authError() }}</span>
+                </div>
+              }
+              
+              <div class="w-full flex flex-col gap-3 mt-4">
+                <button 
+                  (click)="login()"
+                  [disabled]="isLoggingIn()"
+                  [class]="'w-full py-4 rounded-2xl text-sm font-bold tracking-wide uppercase shadow-lg transition-all hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#050505] bg-white/10 backdrop-blur-md border hover:bg-white/20 flex items-center justify-center gap-3 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed ' + selectedColor().textClass + ' ' + selectedColor().borderClass + ' ' + selectedColor().ringClass"
+                >
+                  @if (isLoggingIn()) {
+                    <mat-icon class="animate-spin">autorenew</mat-icon>
+                    Подождите...
+                  } @else {
+                    <mat-icon>login</mat-icon>
+                    Продолжить с Google
+                  }
+                </button>
+
+                <button 
+                  (click)="loginWithGithub()"
+                  [disabled]="isLoggingIn()"
+                  [class]="'w-full py-4 rounded-2xl text-sm font-bold tracking-wide uppercase shadow-lg transition-all hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#050505] bg-zinc-800/80 backdrop-blur-md border border-zinc-700 hover:bg-zinc-700/80 flex items-center justify-center gap-3 text-white disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed ' + selectedColor().ringClass"
+                >
+                  @if (isLoggingIn()) {
+                    <mat-icon class="animate-spin">autorenew</mat-icon>
+                    Подождите...
+                  } @else {
+                    <svg height="24" aria-hidden="true" viewBox="0 0 16 16" version="1.1" width="24" data-view-component="true" class="fill-current">
+                      <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path>
+                    </svg>
+                    Продолжить с GitHub
+                  }
+                </button>
+              </div>
+              
+              <p class="text-xs text-zinc-500 mt-4 text-left">
+                * В данный момент доступна авторизация через Google и GitHub. Для входа по Email/Паролю необходимо включить соответствующий провайдер в Firebase Console.
+              </p>
+            } @else {
+              <div class="p-4 rounded-2xl bg-white/5 border border-white/10 w-full flex items-center gap-4 text-left">
+                <img [src]="currentUser()?.photoURL" alt="Avatar" class="w-12 h-12 rounded-full" referrerpolicy="no-referrer">
+                <div class="flex-1 overflow-hidden">
+                  <div class="font-bold text-white truncate">{{ currentUser()?.displayName }}</div>
+                  <div class="text-xs text-zinc-500 truncate">{{ currentUser()?.email }}</div>
+                </div>
+              </div>
+              
+              <button 
+                (click)="logout()"
+                class="mt-4 w-full py-4 rounded-2xl text-sm font-bold tracking-wide uppercase shadow-lg transition-all hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#050505] bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 flex items-center justify-center gap-3"
+              >
+                <mat-icon>logout</mat-icon>
+                Выйти из аккаунта
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+
   <!-- Backdrop -->
   @if (isMenuOpen()) {
     <div 
@@ -217,6 +297,16 @@
       >
         <mat-icon class="relative z-10 transition-transform duration-500 group-hover:scale-110">settings</mat-icon>
         <span class="relative z-10 font-medium tracking-wide">Настройки</span>
+      </button>
+
+      <!-- Auth -->
+      <button 
+        (click)="selectTab('auth')"
+        class="flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 focus:outline-none group relative overflow-hidden"
+        [class]="activeTab() === 'auth' ? 'bg-white/10 ' + selectedColor().textClass : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'"
+      >
+        <mat-icon class="relative z-10 transition-transform duration-500 group-hover:scale-110">vpn_key</mat-icon>
+        <span class="relative z-10 font-medium tracking-wide">Авторизация</span>
       </button>
     </div>
 
