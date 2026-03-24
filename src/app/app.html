@@ -1,0 +1,238 @@
+<!-- Modern Floating Top Bar -->
+<header class="fixed top-2 md:top-6 left-1/2 -translate-x-1/2 w-[calc(100%-1rem)] md:w-[calc(100%-2rem)] max-w-3xl z-40 bg-white/[0.02] backdrop-blur-lg border rounded-full p-1.5 pl-2 md:p-2 md:pl-3 shadow-xl flex items-center gap-2 md:gap-4 transition-all duration-500" [class]="selectedColor().borderClass">
+  <button (click)="isMenuOpen.set(true)" [class]="'p-2 rounded-full hover:bg-white/10 transition-colors focus:outline-none flex-shrink-0 ' + selectedColor().textClass">
+    <mat-icon class="text-[24px] w-6 h-6">menu</mat-icon>
+  </button>
+  <div class="w-px h-6 bg-white/10 hidden sm:block"></div>
+  
+  @if (currentUser()) {
+    <input 
+      type="text" 
+      placeholder="Опубликовать..." 
+      [value]="newMessageText()"
+      (input)="updateNewMessageText($event)"
+      (keydown)="handleKeydown($event)"
+      [class]="'flex-1 bg-transparent border-none text-sm md:text-base font-medium focus:outline-none focus:ring-0 transition-colors ' + selectedColor().textClass + ' ' + selectedColor().placeholderClass"
+    >
+    <button 
+      (click)="sendMessage()"
+      [disabled]="!newMessageText().trim()"
+      [class]="'px-4 py-2 md:px-8 md:py-3 rounded-full text-xs md:text-sm font-bold tracking-wide uppercase shadow-lg transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#050505] bg-white/5 backdrop-blur-md border hover:bg-white/10 disabled:opacity-50 disabled:hover:scale-100 ' + selectedColor().textClass + ' ' + selectedColor().borderClass + ' ' + selectedColor().ringClass"
+    >
+      <span class="hidden sm:inline">Опубликовать</span>
+      <span class="sm:hidden">Ок</span>
+    </button>
+    <button (click)="logout()" [class]="'w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 transition-colors ' + selectedColor().borderClass">
+      @if (currentUser()?.photoURL) {
+        <img [src]="currentUser()?.photoURL" alt="Profile" class="w-full h-full object-cover" referrerpolicy="no-referrer">
+      } @else {
+        <div class="w-full h-full bg-white/10 flex items-center justify-center">
+          <mat-icon class="text-[16px]">person</mat-icon>
+        </div>
+      }
+    </button>
+  } @else {
+    <div [class]="'flex-1 text-sm md:text-base font-medium opacity-50 ' + selectedColor().textClass">
+      Войдите, чтобы писать сообщения
+    </div>
+    <button 
+      (click)="login()"
+      [class]="'px-4 py-2 md:px-8 md:py-3 rounded-full text-xs md:text-sm font-bold tracking-wide uppercase shadow-lg transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#050505] bg-white/5 backdrop-blur-md border hover:bg-white/10 ' + selectedColor().textClass + ' ' + selectedColor().borderClass + ' ' + selectedColor().ringClass"
+    >
+      <span class="hidden sm:inline">Войти через Google</span>
+      <span class="sm:hidden">Войти</span>
+    </button>
+  }
+</header>
+
+<main class="min-h-screen flex flex-col items-center justify-center p-4 overflow-hidden relative selection:bg-white/10">
+  <!-- Atmospheric Background Glow (Performance Optimized - No blur filters) -->
+  <div [class]="'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150vw] h-[150vw] md:w-[800px] md:h-[800px] rounded-full opacity-[0.08] transition-colors duration-1000 pointer-events-none ' + selectedColor().textClass" style="background: radial-gradient(circle, currentColor 0%, transparent 60%);"></div>
+  <div [class]="'absolute top-0 left-1/2 -translate-x-1/2 w-[120vw] h-[60vw] md:w-[600px] md:h-[300px] rounded-full opacity-[0.05] transition-colors duration-1000 pointer-events-none ' + selectedColor().textClass" style="background: radial-gradient(circle, currentColor 0%, transparent 60%);"></div>
+
+  <div #mainContent [style.display]="activeTab() === 'home' ? 'flex' : 'none'" class="relative z-10 text-center flex-col items-center gap-4 md:gap-8 mt-10 md:mt-0">
+    <h1 #title class="font-display text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-extrabold tracking-tighter flex flex-wrap justify-center gap-x-1 md:gap-x-4 leading-none">
+      @for (char of titleText; track $index) {
+        <span class="inline-block" [class.w-2]="char === ' '" [class.md:w-8]="char === ' '" [class]="selectedColor().textClass">{{ char }}</span>
+      }
+    </h1>
+    <p [class]="'text-lg sm:text-xl md:text-3xl font-light max-w-xs sm:max-w-lg mx-auto transition-colors duration-500 tracking-wide opacity-80 ' + selectedColor().textClass">
+      Добро пожаловать.
+    </p>
+  </div>
+
+  <!-- MESSAGES TAB -->
+  <div 
+    [style.display]="activeTab() === 'messages' ? 'flex' : 'none'"
+    class="relative z-10 flex-col items-center w-full max-w-3xl mt-24 mb-32 animate-in fade-in slide-in-from-bottom-8 duration-700"
+  >
+    <h2 [class]="'text-4xl md:text-6xl font-display font-extrabold mb-12 tracking-tight ' + selectedColor().textClass">
+      Сообщения
+    </h2>
+    
+    <div class="w-full flex flex-col gap-6">
+      @if (messages().length === 0) {
+        <div class="text-center text-zinc-500 mt-10">Нет сообщений. Напишите первым!</div>
+      }
+      
+      @for (msg of messages(); track msg.id) {
+        <div [class]="'flex items-end gap-3 w-full max-w-lg animate-in fade-in slide-in-from-bottom-2 duration-300 ' + (msg.authorId === currentUser()?.uid ? 'self-end flex-row-reverse' : '')">
+          <div [class]="'w-8 h-8 rounded-full flex-shrink-0 mb-1 overflow-hidden shadow-lg ' + (msg.authorId === currentUser()?.uid ? 'opacity-80 ' + selectedColor().bgClass : 'bg-white/10')">
+            @if (msg.authorPhoto) {
+              <img [src]="msg.authorPhoto" alt="Avatar" class="w-full h-full object-cover" referrerpolicy="no-referrer">
+            } @else {
+              <div class="w-full h-full flex items-center justify-center text-white/50 text-xs font-bold">
+                {{ msg.authorName.charAt(0).toUpperCase() }}
+              </div>
+            }
+          </div>
+          <div [class]="'flex flex-col gap-1 ' + (msg.authorId === currentUser()?.uid ? 'items-end' : '')">
+            <span class="text-xs text-zinc-500 mx-2">{{ msg.authorName }}</span>
+            <div [class]="'backdrop-blur-md border p-4 shadow-lg text-sm md:text-base ' + (msg.authorId === currentUser()?.uid ? 'bg-white/10 rounded-3xl rounded-br-xl text-white ' + selectedColor().borderClass : 'bg-white/5 border-white/10 rounded-3xl rounded-bl-xl text-zinc-200')">
+              {{ msg.text }}
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+      <!-- PROFILE TAB -->
+      <div 
+        [style.display]="activeTab() === 'profile' ? 'flex' : 'none'"
+        class="relative z-10 flex-col items-center w-full max-w-3xl mt-24 mb-32 animate-in fade-in slide-in-from-bottom-8 duration-700"
+      >
+        <h2 [class]="'text-4xl md:text-6xl font-display font-extrabold mb-12 tracking-tight ' + selectedColor().textClass">
+          Анкета
+        </h2>
+        <div class="w-full flex flex-col gap-6 items-center text-center">
+          <div class="bg-white/5 backdrop-blur-md border border-white/10 p-8 rounded-3xl text-zinc-300 w-full max-w-lg shadow-lg">
+            <mat-icon class="text-4xl mb-4 opacity-50 w-10 h-10">person</mat-icon>
+            <p>Здесь будет отображаться ваша личная анкета и профиль.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- COMMUNITIES TAB -->
+      <div 
+        [style.display]="activeTab() === 'communities' ? 'flex' : 'none'"
+        class="relative z-10 flex-col items-center w-full max-w-3xl mt-24 mb-32 animate-in fade-in slide-in-from-bottom-8 duration-700"
+      >
+        <h2 [class]="'text-4xl md:text-6xl font-display font-extrabold mb-12 tracking-tight ' + selectedColor().textClass">
+          Сообщества
+        </h2>
+        <div class="w-full flex flex-col gap-6 items-center text-center">
+          <div class="bg-white/5 backdrop-blur-md border border-white/10 p-8 rounded-3xl text-zinc-300 w-full max-w-lg shadow-lg">
+            <mat-icon class="text-4xl mb-4 opacity-50 w-10 h-10">groups</mat-icon>
+            <p>Здесь появится список сообществ по интересам.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS TAB -->
+      <div 
+        [style.display]="activeTab() === 'settings' ? 'flex' : 'none'"
+        class="relative z-10 flex-col items-center w-full max-w-3xl mt-24 mb-32 animate-in fade-in slide-in-from-bottom-8 duration-700"
+      >
+        <h2 [class]="'text-4xl md:text-6xl font-display font-extrabold mb-12 tracking-tight ' + selectedColor().textClass">
+          Настройки
+        </h2>
+        <div class="w-full flex flex-col gap-6 items-center text-center">
+          <div class="bg-white/5 backdrop-blur-md border border-white/10 p-8 rounded-3xl text-zinc-300 w-full max-w-lg shadow-lg">
+            <mat-icon class="text-4xl mb-4 opacity-50 w-10 h-10">settings</mat-icon>
+            <p>Здесь будут настройки приложения и уведомлений.</p>
+          </div>
+        </div>
+      </div>
+
+  <!-- Backdrop -->
+  @if (isMenuOpen()) {
+    <div 
+      class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] animate-in fade-in duration-300"
+      (click)="isMenuOpen.set(false)"
+    ></div>
+  }
+
+  <!-- Sliding Drawer -->
+  <div 
+    class="fixed top-0 left-0 h-full w-[280px] sm:w-[320px] bg-[#0a0a0a]/95 backdrop-blur-3xl border-r border-white/10 z-[70] flex flex-col shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+    [class.translate-x-0]="isMenuOpen()"
+    [class.-translate-x-full]="!isMenuOpen()"
+  >
+    <!-- Drawer Header -->
+    <div class="flex justify-between items-center p-6 border-b border-white/5">
+      <h2 [class]="'text-2xl font-display font-bold tracking-tight ' + selectedColor().textClass">Меню</h2>
+      <button (click)="isMenuOpen.set(false)" class="p-2 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors focus:outline-none">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    
+    <!-- Navigation Links -->
+    <div class="flex flex-col gap-2 p-4 flex-1 overflow-y-auto">
+      <!-- Home -->
+      <button 
+        (click)="selectTab('home')"
+        class="flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 focus:outline-none group relative overflow-hidden"
+        [class]="activeTab() === 'home' ? 'bg-white/10 ' + selectedColor().textClass : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'"
+      >
+        <mat-icon class="relative z-10 transition-transform duration-500 group-hover:scale-110">home</mat-icon>
+        <span class="relative z-10 font-medium tracking-wide">Главная</span>
+      </button>
+
+      <!-- Messages -->
+      <button 
+        (click)="selectTab('messages')"
+        class="flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 focus:outline-none group relative overflow-hidden"
+        [class]="activeTab() === 'messages' ? 'bg-white/10 ' + selectedColor().textClass : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'"
+      >
+        <mat-icon class="relative z-10 transition-transform duration-500 group-hover:scale-110">chat_bubble</mat-icon>
+        <span class="relative z-10 font-medium tracking-wide">Сообщения</span>
+      </button>
+
+      <!-- Profile -->
+      <button 
+        (click)="selectTab('profile')"
+        class="flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 focus:outline-none group relative overflow-hidden"
+        [class]="activeTab() === 'profile' ? 'bg-white/10 ' + selectedColor().textClass : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'"
+      >
+        <mat-icon class="relative z-10 transition-transform duration-500 group-hover:scale-110">person</mat-icon>
+        <span class="relative z-10 font-medium tracking-wide">Анкета</span>
+      </button>
+
+      <!-- Communities -->
+      <button 
+        (click)="selectTab('communities')"
+        class="flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 focus:outline-none group relative overflow-hidden"
+        [class]="activeTab() === 'communities' ? 'bg-white/10 ' + selectedColor().textClass : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'"
+      >
+        <mat-icon class="relative z-10 transition-transform duration-500 group-hover:scale-110">groups</mat-icon>
+        <span class="relative z-10 font-medium tracking-wide">Сообщества</span>
+      </button>
+
+      <!-- Settings -->
+      <button 
+        (click)="selectTab('settings')"
+        class="flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 focus:outline-none group relative overflow-hidden"
+        [class]="activeTab() === 'settings' ? 'bg-white/10 ' + selectedColor().textClass : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'"
+      >
+        <mat-icon class="relative z-10 transition-transform duration-500 group-hover:scale-110">settings</mat-icon>
+        <span class="relative z-10 font-medium tracking-wide">Настройки</span>
+      </button>
+    </div>
+
+    <!-- Theme Picker in Drawer -->
+    <div class="p-6 border-t border-white/5 bg-white/[0.02]">
+      <p class="text-xs font-bold text-zinc-500 mb-4 uppercase tracking-widest">Тема оформления</p>
+      <div class="flex flex-wrap gap-3">
+        @for (color of colors; track color.name) {
+          <button
+            (click)="selectColor(color)"
+            [class]="'w-8 h-8 rounded-full transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0a0a0a] shadow-inner ' + color.bgClass + ' ' + color.ringClass + (selectedColor() === color ? ' scale-110 ring-2 ring-offset-2 ring-offset-[#0a0a0a]' : ' opacity-40 hover:opacity-100')"
+            [attr.aria-label]="'Select ' + color.name + ' color'"
+          ></button>
+        }
+      </div>
+    </div>
+  </div>
+</main>
+<router-outlet />

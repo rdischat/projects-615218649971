@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: messages
+    // Document ID: auto-generated
+    // Fields:
+    //   - text: string (required, max 500 chars) - The content of the message
+    //   - authorId: string (required, immutable) - The UID of the user who sent the message
+    //   - authorName: string (required, max 50 chars) - The display name of the user
+    //   - authorPhoto: string (optional, max 500 chars) - The photo URL of the user
+    //   - createdAt: timestamp (required, immutable) - The time the message was sent
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+    
+    function validStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+    
+    function isValidOptionalString(field, minLen, maxLen) {
+      return !(field in request.resource.data) ||
+             (request.resource.data[field] is string &&
+              request.resource.data[field].size() >= minLen &&
+              request.resource.data[field].size() <= maxLen);
+    }
+    
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    
+    function isValidMessage() {
+      return hasRequiredFields(['text', 'authorId', 'authorName', 'createdAt']) &&
+             hasOnlyAllowedFields(['text', 'authorId', 'authorName', 'authorPhoto', 'createdAt']) &&
+             validStringLength('text', 1, 500) &&
+             validStringLength('authorId', 1, 100) &&
+             validStringLength('authorName', 1, 50) &&
+             isValidOptionalString('authorPhoto', 0, 500) &&
+             request.resource.data.createdAt is timestamp;
+    }
+
+    match /messages/{messageId} {
+      // Anyone can read messages (it's a global chat)
+      allow read: if true;
+      
+      // Only authenticated users can create messages, and they must be the author
+      allow create: if isAuthenticated() && 
+                    isValidMessage() && 
+                    request.resource.data.authorId == request.auth.uid;
+                    
+      // Only the author can update their message, but they cannot change authorId or createdAt
+      allow update: if isAuthenticated() && 
+                    isValidMessage() && 
+                    resource.data.authorId == request.auth.uid &&
+                    request.resource.data.authorId == resource.data.authorId &&
+                    request.resource.data.createdAt == resource.data.createdAt;
+                    
+      // Only the author can delete their message
+      allow delete: if isAuthenticated() && resource.data.authorId == request.auth.uid;
+    }
+  }
+}

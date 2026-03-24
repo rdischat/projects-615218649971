@@ -1,0 +1,5 @@
+{
+  "name": "Dark Background App",
+  "description": "An Angular app with a dark background theme.",
+  "requestFramePermissions": []
+}

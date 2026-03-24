@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "Message": {
+      "title": "Message",
+      "description": "A chat message in the global chat",
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The content of the message"
+        },
+        "authorId": {
+          "type": "string",
+          "description": "The UID of the user who sent the message"
+        },
+        "authorName": {
+          "type": "string",
+          "description": "The display name of the user"
+        },
+        "authorPhoto": {
+          "type": "string",
+          "description": "The photo URL of the user"
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "description": "The time the message was sent"
+        }
+      },
+      "required": ["text", "authorId", "authorName", "createdAt"]
+    }
+  },
+  "firestore": {
+    "messages": {
+      "schema": {
+        "$ref": "#/entities/Message"
+      },
+      "description": "Global chat messages"
+    }
+  }
+}
