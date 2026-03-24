@@ -170,6 +170,10 @@ export class App {
       this.authError.set('Окно авторизации было закрыто до завершения входа.');
     } else if (error.code === 'auth/cancelled-popup-request') {
       this.authError.set('Предыдущий запрос на авторизацию был отменен. Пожалуйста, подождите и попробуйте снова.');
+    } else if (error.code === 'auth/invalid-credential' || (error.message && error.message.includes('incorrect_client_credentials'))) {
+      this.authError.set('Ошибка настройки GitHub: Неверный Client ID или Client Secret. Пожалуйста, проверьте настройки в Firebase Console и GitHub Developer Settings.');
+    } else if (error.code === 'auth/account-exists-with-different-credential') {
+      this.authError.set('Аккаунт с таким email уже существует. Пожалуйста, войдите через Google (или тот способ, который вы использовали при первой регистрации).');
     } else {
       this.authError.set(error.message || 'Произошла ошибка при авторизации.');
     }
